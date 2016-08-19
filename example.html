@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>index</title>
+    <link href="http://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&amp;subset=latin" rel="stylesheet">
+  </head>
+  <body>
+    <ul class="graph"></ul>
+    <style type="text/less">
+    body {
+      color: white;
+      font-size: 1.2rem;
+      font-family: Arial;
+      font-weight: 100;
+    }
+    body > .nodes > .node > .node-title {
+      background-color: #2C3E50 !important;
+    }
+    .nodes {
+      display: flex;
+      margin: 0;
+      padding: 0;
+      align-items: flex-start;
+      justify-content: center;
+      &.nodes-flat {
+        display: block;
+        .node {
+          display: block;
+        }
+      }
+    }
+    .node {
+      list-style-type: none;
+
+      flex: 1;
+
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .node-title {
+      padding: 1rem;
+      cursor: pointer;
+
+      height: 1rem;
+      width: 1rem;
+      display: inline-block;
+      border-radius: 8rem;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    </style>
+    <script src="less.min.js"></script>
+    <script src="react-with-addons.min.js"></script>
+    <script src="immutable.min.js"></script>
+    <script src="immstruct.min.js"></script>
+    <script src="omniscient.min.js"></script>
+    <script src="browser.js"></script>
+    <script type="text/babel">
+
+let { Map, Range, List } = Immutable;
+
+let createNodes = (node, levels) => Map({
+  node: node,
+  nodes: levels
+    ? Range(0, Math.random()*2)
+        .map(_ => createNodes(node + 1, levels - 1))
+        .toList()
+    : List([])
+});
+
+// let data = immstruct(createNodes(0, 5));
+let data = immstruct([{
+  "node": 0,
+  "nodes": [
+    {
+      "node": 1,
+      "nodes": [
+        {
+          "node": 2,
+          "nodes": [
+            {
+              "node": 3,
+              "nodes": [
+                {
+                  "node": 4,
+                  "nodes": []
+                },
+                {
+                  "node": 4,
+                  "nodes": [
+                    {
+                      "node": 5,
+                      "nodes": []
+                    },
+                    {
+                      "node": 6,
+                      "nodes": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node": 3,
+              "nodes": [
+                {
+                  "node": 4,
+                  "nodes": []
+                },
+              ]
+            }
+          ]
+        },
+        {
+          "node": 2,
+          "nodes": [
+            {
+              "node": 3,
+              "nodes": [
+                {
+                  "node": 4,
+                  "nodes": []
+                },
+                {
+                  "node": 4,
+                  "nodes": []
+                }
+              ]
+            },
+            {
+              "node": 3,
+              "nodes": [
+                {
+                  "node": 4,
+                  "nodes": [
+                    {
+                      "node": 5,
+                      "nodes": [
+                        {
+                          "node": 6,
+                          "nodes": []
+                        },
+                        {
+                          "node": 6,
+                          "nodes": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "node": 4,
+                  "nodes": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}]);
+
+data = immstruct([createNodes(0, 8)]);
+
+let VisualizeScuMixin = {
+  shouldComponentUpdate: function () {
+    this.didUpdate = omniscient.shouldComponentUpdate.apply(this, arguments);
+    return true;
+  }
+};
+
+let Node = React.createClass({
+  mixins: [VisualizeScuMixin],
+  render: function () {
+    let node = this.props.node;
+    let onClick = _ => node.updateIn(['node'], node => node + 1);
+    let css = { backgroundColor: this.didUpdate ? '#3498DB' : '#ccc' };
+    return <li className="node">
+      <span style={css} onClick={onClick} className="node-title">{node.get('node')}</span>
+      <Nodes nodes={node.cursor('nodes')} />
+    </li>;
+  }
+});
+
+let Nodes = React.createClass({
+  mixins: [VisualizeScuMixin],
+  render: function () {
+    let propClasses = this.props.className || '';
+    let classes = "nodes " + propClasses;
+    return <ul className={classes}>
+        {this.props.nodes.toArray().map(node => <Node node={node} />)}
+    </ul>;
+  }
+});
+
+let LeafNodes = React.createClass({
+  mixins: [VisualizeScuMixin],
+  render: function () {
+    let children = (acc, node) => {
+      if (!node.get('nodes').count())
+        return acc.push(node);
+      return acc.concat(node.get('nodes').reduce(children, List([])));
+    }
+    var leaves = this.props.nodes.reduce(children, List([]));
+    return <Nodes nodes={leaves} className="nodes-flat" />;
+  }
+});
+
+var el = document.querySelector('.graph');
+const render = () => React.render(<div>
+  <h1>Tree</h1>
+  <Nodes nodes={data.cursor()} />
+  <h1>Leaves</h1>
+  <LeafNodes nodes={data.cursor()} />
+</div>
+, el);
+data.on('swap', render);
+render();
+    </script>
+  </body>
+</html>
